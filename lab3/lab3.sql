@@ -197,7 +197,7 @@ select
 	) as properties
 from aggregated;
 
--- Calculate average points per game for players and retrieve other relevant details.
+-- Calculate average points for each player in his overall matches and compare it with stats per game for players and retrieve other relevant details.
 select 
 	v.properties ->> 'player_name',  -- Player name
 	e.object_identifier,             -- Opponent/player ID
