@@ -1,8 +1,14 @@
+-- Define the vertex types (player, team, game) for the graph structure.
+-- This will categorize vertices in the graph database to represent players, teams, and games.
+
 -- Drop the vertex_type enum if it exists, along with any dependent objects
 drop type vertex_type cascade;
 
 -- Create an enum type to categorize vertices as 'player', 'team', or 'game'
 create type vertex_type as enum ('player', 'team', 'game');
+
+-- Define the edges table and its relationship types (plays_in, plays_against, shares_team, plays_on).
+-- These will represent how vertices (e.g., players and games) relate to one another.
 
 -- Drop the vertices table if it exists
 drop table if exists vertices;
@@ -37,10 +43,15 @@ create table edges
 	primary key (subject_identifier, subject_type, object_identifier, object_type, edge_type)
 );
 
+-- View the games table for reference to understand the data being processed.
+-- This ensures we understand the data being used to populate the graph.
+
 -- Select all records from the games table (example query)
 select * from games;
 
--- Insert game details into the vertices table
+-- Populate the vertices table with game details.
+-- Each game will be represented as a vertex with JSON properties capturing game-specific data.
+
 insert into vertices
 select 
 	game_id as identifier,            -- Game ID as the vertex identifier
@@ -53,7 +64,9 @@ select
 	) as properties
 from games;
 
--- Insert player details into the vertices table
+-- Populate the vertices table with player details.
+-- Each player will be represented as a vertex with JSON properties capturing aggregated stats.
+
 insert into vertices
 with players_agg as (
 	select 
@@ -76,7 +89,9 @@ select
 	)
 from players_agg;
 
--- Insert team details into the vertices table
+-- Populate the vertices table with team details.
+-- Each team will be represented as a vertex with JSON properties capturing its details.
+
 insert into vertices
 with teams_deduped as (
 	select *, row_number() over (partition by team_id) as row_num
@@ -95,11 +110,13 @@ select
 from teams_deduped
 where row_num = 1;                  -- Deduplicate by taking the first record per team
 
--- Check the inserted data
+-- Verify the data inserted into the vertices table.
 select * from vertices;
 select type, count(1) from vertices group by 1;
 
--- Insert 'plays_in' relationships into the edges table
+-- Populate the edges table with 'plays_in' relationships.
+-- This connects players to the games they played in, with additional game-specific details.
+
 insert into edges
 with deduped as (
 	select *, row_number() over(partition by player_id, game_id) as row_num 
@@ -120,7 +137,7 @@ select
 from deduped 
 where row_num = 1;                  -- Deduplicate by taking the first record
 
--- Query to find the maximum points scored by each player
+-- Query the maximum points scored by each player in a single game.
 select 	
 	v.properties ->> 'player_name',   -- Get player name from vertex properties
 	max(cast(e.properties ->> 'pts' as integer)) -- Maximum points scored in a game
@@ -130,7 +147,10 @@ and e.subject_type = v.type
 group by 1
 order by 2 desc;
 
--- Insert player-to-player relationships into the edges table ('shares_team' and 'plays_against')
+-- Populate the edges table with player-to-player relationships.
+-- Relationships include 'shares_team' (same team) and 'plays_against' (opposite teams).
+-- Duplicate edges (e.g., A-B and B-A) are avoided.
+
 insert into edges
 with deduped as (
 	select *, row_number() over(partition by player_id, game_id) as row_num 
@@ -177,10 +197,7 @@ select
 	) as properties
 from aggregated;
 
--- Explanation: For player relationships, if X plays Y, then Y also plays X. 
--- To avoid duplicates, we use f1.player_name > f2.player_name.
-
--- Query to calculate average points per game for players
+-- Calculate average points per game for players and retrieve other relevant details.
 select 
 	v.properties ->> 'player_name',  -- Player name
 	e.object_identifier,             -- Opponent/player ID
