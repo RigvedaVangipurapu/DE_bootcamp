@@ -257,6 +257,13 @@ new_records AS (
 )
 -- Combines all historical, unchanged, changed, and new records into one result set.
 SELECT * FROM historical_scd
+union all
+select * from unchanged_records
+union all
+select * from unnested_changed_records
+union all
+select * from new_records;
+
 
 
 
