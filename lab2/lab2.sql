@@ -1,5 +1,5 @@
 '''step 3 and step 5 are 2 ways of creating SCDs (SCD type 2)
-    step 3 - load all data at the same time - inefficient since we apply partition on whole data
+    step 3,4 - load all data at the same time - inefficient since we apply partition on whole data
     step 5 - incremental load after previous SCD - more efficient, more cumbersome
 '''
 
