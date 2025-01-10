@@ -2,6 +2,32 @@ select * from game_details gd where gd.player_name like 'LeBron%';
 select * from games;
 select * from players:
 
+WITH team_game_results AS (
+    SELECT 
+        g.game_id,
+        CASE 
+            WHEN g.home_team_wins = 1 THEN g.home_team_id
+            ELSE g.visitor_team_id
+        END AS winning_team_id
+    FROM games g
+),
+team_win_counts AS (
+    SELECT 
+        winning_team_id AS team_id,
+        ROW_NUMBER() OVER (PARTITION BY winning_team_id ORDER BY g.game_date_est) AS game_number,
+        COUNT(*) OVER (PARTITION BY winning_team_id ORDER BY g.game_date_est ROWS BETWEEN 89 PRECEDING AND CURRENT ROW) AS wins_in_90_games
+    FROM team_game_results tgr
+    JOIN games g ON tgr.game_id = g.game_id
+)
+SELECT 
+    team_id,
+    MAX(wins_in_90_games) AS most_wins_in_90_games
+FROM team_win_counts
+GROUP BY team_id
+ORDER BY most_wins_in_90_games DESC
+LIMIT 1;
+
+
 WITH scoring_data AS (
     SELECT 
         player_id,
